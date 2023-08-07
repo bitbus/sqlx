@@ -10,7 +10,7 @@ package sqlx
 //
 //  * compileNamedQuery - rebind a named query, returning a query and list of names
 //  * bindArgs, bindMapArgs, bindAnyArgs - given a list of names, return an arglist
-//
+
 import (
 	"bytes"
 	"database/sql"
