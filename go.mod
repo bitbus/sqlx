@@ -1,4 +1,4 @@
-module github.com/jmoiron/sqlx
+module github.com/bitbus/sqlx
 
 go 1.18
 

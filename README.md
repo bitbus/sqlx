@@ -1,6 +1,6 @@
 # sqlx
 
-[![Build Status](https://travis-ci.org/jmoiron/sqlx.svg?branch=master)](https://travis-ci.org/jmoiron/sqlx) [![Coverage Status](https://coveralls.io/repos/github/jmoiron/sqlx/badge.svg?branch=master)](https://coveralls.io/github/jmoiron/sqlx?branch=master) [![Godoc](http://img.shields.io/badge/godoc-reference-blue.svg?style=flat)](https://godoc.org/github.com/jmoiron/sqlx) [![license](http://img.shields.io/badge/license-MIT-red.svg?style=flat)](https://raw.githubusercontent.com/jmoiron/sqlx/master/LICENSE)
+[![GoDoc](https://godoc.org/github.com/bitbus/sqlx?status.svg)](https://pkg.go.dev/github.com/bitbus/sqlx)  
 
 sqlx is a library which provides a set of extensions on go's standard
 `database/sql` library.  The sqlx versions of `sql.DB`, `sql.TX`, `sql.Stmt`,
@@ -14,11 +14,16 @@ Major additional concepts are:
 * Named parameter support including prepared statements
 * `Get` and `Select` to go quickly from query to struct/slice
 
-In addition to the [godoc API documentation](http://godoc.org/github.com/jmoiron/sqlx),
+In addition to the [godoc API documentation](http://godoc.org/github.com/bitbus/sqlx),
 there is also some [user documentation](http://jmoiron.github.io/sqlx/) that
 explains how to use `database/sql` along with sqlx.
 
 ## Recent Changes
+
+1.5.0
+- add `With/WithTx/Withx/WithTxx` function for `Conn`/`DB`
+- add `InExec/MustInExec/InGet/InSelect` help function
+- add `InExec/MustInExec/InGet/InSelect` method for `DB`/`Tx`
 
 1.3.0:
 
@@ -46,7 +51,7 @@ will get major version number bumps.
 
 ## install
 
-    go get github.com/jmoiron/sqlx
+    go get github.com/bitbus/sqlx
 
 ## issues
 
@@ -64,7 +69,7 @@ to give columns distinct names, `rows.Scan` to scan them manually, or
 ## usage
 
 Below is an example which shows some common use cases for sqlx.  Check 
-[sqlx_test.go](https://github.com/jmoiron/sqlx/blob/master/sqlx_test.go) for more
+[sqlx_test.go](https://github.com/bitbus/sqlx/blob/master/sqlx_test.go) for more
 usage.
 
 
@@ -77,7 +82,7 @@ import (
     "log"
     
     _ "github.com/lib/pq"
-    "github.com/jmoiron/sqlx"
+    "github.com/bitbus/sqlx"
 )
 
 var schema = `
