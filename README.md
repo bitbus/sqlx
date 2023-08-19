@@ -24,7 +24,7 @@ explains how to use `database/sql` along with sqlx.
 
 * `sqlx.DB.Connx(context.Context) *sqlx.Conn`
 * `sqlx.BindDriver(driverName, bindType)`
-* support for `[]map[string]interface{}` to do "batch" insertions
+* support for `[]map[string]any` to do "batch" insertions
 * allocation & perf improvements for `sqlx.In`
 
 DB.Connx returns an `sqlx.Conn`, which is an `sql.Conn`-alike consistent with
@@ -127,7 +127,7 @@ func main() {
     tx.NamedExec("INSERT INTO person (first_name, last_name, email) VALUES (:first_name, :last_name, :email)", &Person{"Jane", "Citizen", "jane.citzen@example.com"})
     tx.Commit()
 
-    // Query the database, storing results in a []Person (wrapped in []interface{})
+    // Query the database, storing results in a []Person (wrapped in []any)
     people := []Person{}
     db.Select(&people, "SELECT * FROM person ORDER BY first_name ASC")
     jason, john := people[0], people[1]
@@ -173,14 +173,14 @@ func main() {
     // Named queries, using `:name` as the bindvar.  Automatic bindvar support
     // which takes into account the dbtype based on the driverName on sqlx.Open/Connect
     _, err = db.NamedExec(`INSERT INTO person (first_name,last_name,email) VALUES (:first,:last,:email)`, 
-        map[string]interface{}{
+        map[string]any{
             "first": "Bin",
             "last": "Smuth",
             "email": "bensmith@allblacks.nz",
     })
 
     // Selects Mr. Smith from the database
-    rows, err = db.NamedQuery(`SELECT * FROM person WHERE first_name=:fn`, map[string]interface{}{"fn": "Bin"})
+    rows, err = db.NamedQuery(`SELECT * FROM person WHERE first_name=:fn`, map[string]any{"fn": "Bin"})
 
     // Named queries can also use structs.  Their bind names follow the same rules
     // as the name -> db mapping, so struct fields are lowercased and the `db` tag
@@ -201,7 +201,7 @@ func main() {
         VALUES (:first_name, :last_name, :email)`, personStructs)
 
     // batch insert with maps
-    personMaps := []map[string]interface{}{
+    personMaps := []map[string]any{
         {"first_name": "Ardie", "last_name": "Savea", "email": "asavea@ab.co.nz"},
         {"first_name": "Sonny Bill", "last_name": "Williams", "email": "sbw@ab.co.nz"},
         {"first_name": "Ngani", "last_name": "Laumape", "email": "nlaumape@ab.co.nz"},
