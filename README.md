@@ -222,3 +222,6 @@ func main() {
         VALUES (:first_name, :last_name, :email)`, personMaps)
 }
 ```
+
+## Projects that used sqlx
+* [paopao-ce](https://github.com/rocboss/paopao-ce/tree/r/paopao-ce-plus) - A artistic "twitter like" community built on gin+zinc+vue+ts.  
