@@ -1,6 +1,7 @@
 package sqlx
 
 import (
+	"context"
 	"database/sql"
 	"database/sql/driver"
 	"errors"
@@ -84,6 +85,18 @@ type Queryer interface {
 // Execer is an interface used by MustExec and LoadFile
 type Execer interface {
 	Exec(query string, args ...interface{}) (sql.Result, error)
+}
+
+// QueryIn is an interface used by InGet and InSelect
+type QueryIn interface {
+	Queryer
+	In(query string, args ...interface{}) (string, []interface{}, error)
+}
+
+// ExecIn is an interface used by MustInExec and InExec
+type ExecIn interface {
+	Execer
+	In(query string, args ...interface{}) (string, []interface{}, error)
 }
 
 // Binder is an interface for something which can bind queries (Tx, DB)
@@ -343,6 +356,110 @@ func (db *DB) Beginx() (*Tx, error) {
 	return &Tx{Tx: tx, driverName: db.driverName, unsafe: db.unsafe, Mapper: db.Mapper}, err
 }
 
+// Begin starts a transaction and do the given handle. The default isolation level
+// is dependent on the driver.
+//
+// With uses context.Background internally; to specify the context, use
+// With Tx.
+func (db *DB) With(handle func(tx *sql.Tx) error) error {
+	tx, err := db.Begin()
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback()
+	if err = handle(tx); err != nil {
+		return err
+	}
+	return tx.Commit()
+}
+
+// BeginTx starts a transaction and do the given handle.
+//
+// The provided context is used until the transaction is committed or rolled back.
+// If the context is canceled, the sql package will roll back
+// the transaction. Tx.Commit will return an error if the context provided to
+// BeginTx is canceled.
+//
+// The provided TxOptions is optional and may be nil if defaults should be used.
+// If a non-default isolation level is used that the driver doesn't support,
+// an error will be returned.
+func (db *DB) WithTx(ctx context.Context, opts *sql.TxOptions, handle func(tx *sql.Tx) error) error {
+	tx, err := db.BeginTx(ctx, opts)
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback()
+	if err = handle(tx); err != nil {
+		return err
+	}
+	return tx.Commit()
+}
+
+// Withx begins a transaction and returns an *sqlx.Tx instead of an *sql.Tx and do the given handle.
+func (db *DB) Withx(handle func(tx *Tx) error) error {
+	tx, err := db.Beginx()
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback()
+	if err = handle(tx); err != nil {
+		return err
+	}
+	return tx.Commit()
+}
+
+// WithTxx begins a transaction and returns an *sqlx.Tx instead of an
+// *sql.Tx and do the give handle.
+//
+// The provided context is used until the transaction is committed or rolled
+// back. If the context is canceled, the sql package will roll back the
+// transaction. Tx.Commit will return an error if the context provided to
+// BeginxContext is canceled.
+func (db *DB) WithTxx(ctx context.Context, opts *sql.TxOptions, handle func(tx *Tx) error) error {
+	tx, err := db.BeginTxx(ctx, opts)
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback()
+	if err = handle(tx); err != nil {
+		return err
+	}
+	return tx.Commit()
+}
+
+// In expands slice values in args, returning the modified query string
+// and a new arg list that can be executed by a database. The `query` should
+// use the `?` bindVar.  The return value uses had rebinded bindvar type.
+func (db *DB) In(query string, args ...any) (string, []any, error) {
+	q, params, err := In(query, args...)
+	if err != nil {
+		return "", nil, err
+	}
+	return db.Rebind(q), params, nil
+}
+
+// InExec executes a query without returning any rows for in.
+// The args are for any placeholder parameters in the query.
+//
+// InExec uses context.Background internally; to specify the context, use
+// ExecContext.
+func (db *DB) InExec(query string, args ...any) (sql.Result, error) {
+	return InExec(db, query, args...)
+}
+
+// InSelect using this DB but for in.
+// Any placeholder parameters are replaced with supplied args.
+func (db *DB) InSelect(dest any, query string, args ...any) error {
+	return InSelect(db, dest, query, args...)
+}
+
+// InGet using this DB but for in.
+// Any placeholder parameters are replaced with supplied args.
+// An error is returned if the result set is empty.
+func (db *DB) InGet(dest any, query string, args ...any) error {
+	return InGet(db, dest, query, args...)
+}
+
 // Queryx queries the database and returns an *sqlx.Rows.
 // Any placeholder parameters are replaced with supplied args.
 func (db *DB) Queryx(query string, args ...interface{}) (*Rows, error) {
@@ -364,6 +481,12 @@ func (db *DB) QueryRowx(query string, args ...interface{}) *Row {
 // Any placeholder parameters are replaced with supplied args.
 func (db *DB) MustExec(query string, args ...interface{}) sql.Result {
 	return MustExec(db, query, args...)
+}
+
+// MustExec (panic) runs MustExec using this database for in.
+// Any placeholder parameters are replaced with supplied args.
+func (db *DB) MustInExec(query string, args ...interface{}) sql.Result {
+	return MustInExec(db, query, args...)
 }
 
 // Preparex returns an sqlx.Stmt instead of a sql.Stmt
@@ -425,6 +548,39 @@ func (tx *Tx) NamedExec(query string, arg interface{}) (sql.Result, error) {
 	return NamedExec(tx, query, arg)
 }
 
+// In expands slice values in args, returning the modified query string
+// and a new arg list that can be executed by a database. The `query` should
+// use the `?` bindVar.  The return value uses had rebinded bindvar type.
+func (tx *Tx) In(query string, args ...any) (string, []any, error) {
+	q, params, err := In(query, args...)
+	if err != nil {
+		return "", nil, err
+	}
+	return tx.Rebind(q), params, nil
+}
+
+// InExec executes a query that doesn't return rows for in.
+// For example: an INSERT and UPDATE.
+//
+// Exec uses context.Background internally; to specify the context, use
+// ExecContext.
+func (tx *Tx) InExec(query string, args ...any) (sql.Result, error) {
+	return InExec(tx, query, args...)
+}
+
+// InSelect within a transaction for in.
+// Any placeholder parameters are replaced with supplied args.
+func (tx *Tx) InSelect(dest any, query string, args ...any) error {
+	return InSelect(tx, dest, query, args...)
+}
+
+// Get within a transaction for in.
+// Any placeholder parameters are replaced with supplied args.
+// An error is returned if the result set is empty.
+func (tx *Tx) InGet(dest any, query string, args ...any) error {
+	return InGet(tx, dest, query, args...)
+}
+
 // Select within a transaction.
 // Any placeholder parameters are replaced with supplied args.
 func (tx *Tx) Select(dest interface{}, query string, args ...interface{}) error {
@@ -459,6 +615,12 @@ func (tx *Tx) Get(dest interface{}, query string, args ...interface{}) error {
 // Any placeholder parameters are replaced with supplied args.
 func (tx *Tx) MustExec(query string, args ...interface{}) sql.Result {
 	return MustExec(tx, query, args...)
+}
+
+// MustInExec runs MustExec within a transaction for in.
+// Any placeholder parameters are replaced with supplied args.
+func (tx *Tx) MustInExec(query string, args ...interface{}) sql.Result {
+	return MustInExec(tx, query, args...)
 }
 
 // Preparex  a statement within a transaction.
@@ -690,6 +852,39 @@ func Get(q Queryer, dest interface{}, query string, args ...interface{}) error {
 	return r.scanAny(dest, false)
 }
 
+// InSelect for in scene executes a query using the provided Queryer, and StructScans each row
+// into dest, which must be a slice.  If the slice elements are scannable, then
+// the result set must have only one column.  Otherwise, StructScan is used.
+// The *sql.Rows are closed automatically.
+// Any placeholder parameters are replaced with supplied args.
+func InSelect(q QueryIn, dest interface{}, query string, args ...interface{}) error {
+	newQuery, params, err := q.In(query, args...)
+	if err != nil {
+		return err
+	}
+	rows, err := q.Queryx(newQuery, params...)
+	if err != nil {
+		return err
+	}
+	// if something happens here, we want to make sure the rows are Closed
+	defer rows.Close()
+	return scanAll(rows, dest, false)
+}
+
+// InGet for in scene does a QueryRow using the provided Queryer, and scans the resulting row
+// to dest.  If dest is scannable, the result must only have one column.  Otherwise,
+// StructScan is used.  Get will return sql.ErrNoRows like row.Scan would.
+// Any placeholder parameters are replaced with supplied args.
+// An error is returned if the result set is empty.
+func InGet(q QueryIn, dest interface{}, query string, args ...interface{}) error {
+	newQuery, params, err := q.In(query, args...)
+	if err != nil {
+		return err
+	}
+	r := q.QueryRowx(newQuery, params...)
+	return r.scanAny(dest, false)
+}
+
 // LoadFile exec's every statement in a file (as a single call to Exec).
 // LoadFile may return a nil *sql.Result if errors are encountered locating or
 // reading the file at path.  LoadFile reads the entire file into memory, so it
@@ -722,6 +917,33 @@ func MustExec(e Execer, query string, args ...interface{}) sql.Result {
 		panic(err)
 	}
 	return res
+}
+
+// MustInExec for in scene execs the query using e and panics if there was an error.
+// Any placeholder parameters are replaced with supplied args.
+func MustInExec(e ExecIn, query string, args ...interface{}) sql.Result {
+	newQuery, params, err := e.In(query, args...)
+	if err != nil {
+		panic(err)
+	}
+	res, err := e.Exec(newQuery, params...)
+	if err != nil {
+		panic(err)
+	}
+	return res
+}
+
+// Exec for in scene executes a query that doesn't return rows.
+// For example: an INSERT and UPDATE.
+//
+// Exec uses context.Background internally; to specify the context, use
+// ExecContext.
+func InExec(e ExecIn, query string, args ...interface{}) (sql.Result, error) {
+	newQuery, params, err := e.In(query, args...)
+	if err != nil {
+		return nil, err
+	}
+	return e.Exec(newQuery, params...)
 }
 
 // SliceScan using this Rows.
