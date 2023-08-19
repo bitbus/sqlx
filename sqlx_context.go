@@ -231,6 +231,88 @@ func (c *Conn) BeginTxx(ctx context.Context, opts *sql.TxOptions) (*Tx, error) {
 	return &Tx{Tx: tx, driverName: c.driverName, unsafe: c.unsafe, Mapper: c.Mapper}, err
 }
 
+// With starts a transaction and do the give handle.
+//
+// The provided context is used until the transaction is committed or rolled back.
+// If the context is canceled, the sql package will roll back
+// the transaction. Tx.Commit will return an error if the context provided to
+// BeginTx is canceled.
+//
+// The provided TxOptions is optional and may be nil if defaults should be used.
+// If a non-default isolation level is used that the driver doesn't support,
+// an error will be returned.
+func (c *Conn) With(handle func(tx *sql.Tx) error) error {
+	tx, err := c.BeginTx(context.Background(), nil)
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback()
+	if err = handle(tx); err != nil {
+		return err
+	}
+	return tx.Commit()
+}
+
+// WithTx starts a transaction and do the give handle.
+//
+// The provided context is used until the transaction is committed or rolled back.
+// If the context is canceled, the sql package will roll back
+// the transaction. Tx.Commit will return an error if the context provided to
+// BeginTx is canceled.
+//
+// The provided TxOptions is optional and may be nil if defaults should be used.
+// If a non-default isolation level is used that the driver doesn't support,
+// an error will be returned.
+func (c *Conn) WithTx(ctx context.Context, opts *sql.TxOptions, handle func(tx *sql.Tx) error) error {
+	tx, err := c.BeginTx(ctx, opts)
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback()
+	if err = handle(tx); err != nil {
+		return err
+	}
+	return tx.Commit()
+}
+
+// Withx begins a transaction and returns an *sqlx.Tx instead of an
+// *sql.Tx and do the give handle.
+//
+// The provided context is used until the transaction is committed or rolled
+// back. If the context is canceled, the sql package will roll back the
+// transaction. Tx.Commit will return an error if the context provided to
+// BeginxContext is canceled.
+func (c *Conn) Withx(handle func(tx *Tx) error) error {
+	tx, err := c.BeginTxx(context.Background(), nil)
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback()
+	if err = handle(tx); err != nil {
+		return err
+	}
+	return tx.Commit()
+}
+
+// WithTxx begins a transaction and returns an *sqlx.Tx instead of an
+// *sql.Tx and do the give handle.
+//
+// The provided context is used until the transaction is committed or rolled
+// back. If the context is canceled, the sql package will roll back the
+// transaction. Tx.Commit will return an error if the context provided to
+// BeginxContext is canceled.
+func (c *Conn) WithTxx(ctx context.Context, opts *sql.TxOptions, handle func(tx *Tx) error) error {
+	tx, err := c.BeginTxx(ctx, opts)
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback()
+	if err = handle(tx); err != nil {
+		return err
+	}
+	return tx.Commit()
+}
+
 // SelectContext using this Conn.
 // Any placeholder parameters are replaced with supplied args.
 func (c *Conn) SelectContext(ctx context.Context, dest interface{}, query string, args ...interface{}) error {
