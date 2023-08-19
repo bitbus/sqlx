@@ -19,13 +19,19 @@ there is also some [user documentation](http://jmoiron.github.io/sqlx/) that
 explains how to use `database/sql` along with sqlx.
 
 ## Recent Changes
+v1.6.0:
+- change package name from `github.com/jmoiron/sqlx` to `github.com/bitbus/sqlx`
 
-1.5.0
+v1.5.0:
 - add `With/WithTx/Withx/WithTxx` function for `Conn`/`DB`
 - add `InExec/MustInExec/InGet/InSelect` help function
 - add `InExec/MustInExec/InGet/InSelect` method for `DB`/`Tx`
 
-1.3.0:
+v1.4.0:
+- just format and pretty some code
+- set minium support go version to go1.18+ in go.mod
+
+v1.3.0:
 
 * `sqlx.DB.Connx(context.Context) *sqlx.Conn`
 * `sqlx.BindDriver(driverName, bindType)`
