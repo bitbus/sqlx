@@ -38,6 +38,6 @@ type Queryable interface {
 	NamedQuery(string, interface{}) (*Rows, error)
 	InGet(any, string, ...any) error
 	InSelect(any, string, ...any) error
-	InExec(query string, args ...any) (sql.Result, error)
+	InExec(string, ...any) (sql.Result, error)
 	MustInExec(string, ...any) sql.Result
 }
